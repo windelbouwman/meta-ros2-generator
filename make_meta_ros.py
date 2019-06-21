@@ -85,7 +85,8 @@ def process_package(package, version, url, output_folder):
     logger.debug('Final url: %s', url)
     source_zip_data = download_file(url)
 
-    recipe_filename = os.path.join(output_folder, '{}-{}.bb'.format(package, version))
+    # Recipe filename is: <package>_<version>.bb
+    recipe_filename = os.path.join(output_folder, '{}_{}.bb'.format(package.replace('_', '-'), version))
     zip_archive = zipfile.ZipFile(io.BytesIO(source_zip_data))
     for filename in zip_archive.namelist():
         if filename.endswith('package.xml'):
@@ -98,30 +99,62 @@ def process_package(package, version, url, output_folder):
             root = tree.getroot()
 
             # Extract different xml elements:
-            description = root.find('description').text.strip()
+            description = normalize_description(root.find('description').text)
             license_element = root.find('license')
-            license_text = license_element.text if license_element else None
+            # print(license_element)
+            license_text = None if license_element is None else validate_license(license_element.text)
+            # print(license_text)
 
             # Build tool:
-            build_tools = '+'.join(e.text for e in root.findall('buildtool_depend'))
+            build_tools = [e.text for e in root.findall('buildtool_depend')]
+            if build_tools:
+                build_tools = ' '.join(build_tools)
+            else:
+                build_tools = 'ament'
+
             dependencies = ' '.join(e.text for e in root.findall('depend'))
             
-            md5sum = hashlib.md5(source_zip_data).hexdigest()
-            sha256sum = hashlib.sha256(source_zip_data).hexdigest()
+    md5sum = hashlib.md5(source_zip_data).hexdigest()
+    sha256sum = hashlib.sha256(source_zip_data).hexdigest()
 
-            data = {
-                'description': description,
-                'timestamp': time.ctime(),
-                'build_tool': str(build_tools),
-                'dependencies': dependencies,
-                'url': url,
-                'md5sum': md5sum,
-                'sha256sum': sha256sum,
-                'license': license_text,
-                'license_line': license_line,
-                'license_md5': license_md5,
-            }
-            generate_yocto_recipe(recipe_filename, data)
+    data = {
+        'description': description,
+        'timestamp': time.ctime(),
+        'build_tool': 'ament',  # (build_tools),
+        'dependencies': dependencies,
+        'url': url,
+        'md5sum': md5sum,
+        'sha256sum': sha256sum,
+        'has_license': bool(license_line),
+        'license': license_text,
+        'license_line': license_line,
+        'license_md5': license_md5,
+    }
+    generate_yocto_recipe(recipe_filename, data)
+
+def normalize_description(text):
+    return ' '.join(
+        p.strip() for p in text.split('\n')
+    )
+
+def validate_license(text):
+    parts = text.split(',')
+    return ' '.join(map(warp_license, map(str.strip, parts)))
+
+def warp_license(text):
+    """ Some fuzzy mapping according to GNU Lesser Public License 2.1 """
+    license_map = {
+        "Apache License 2.0": "Apache-2.0",
+        "Apache 2.0": "Apache-2.0",
+        "Apache License": "Apache-2.0",
+        "Version 2.0": "Apache-2.0",
+        "BSD License 2.0": "BSD-2-Clause",
+        "BSD": "BSD",
+        "MIT": "MIT",
+        "LGPL": "LGPL",
+        "GNU Lesser Public License 2.1": "LGPL-2.1",
+    }
+    return license_map[text]
 
 
 def extract_license(f):
@@ -154,12 +187,12 @@ def download_file(url):
 recipe_template_text = r"""
 # ATTENTION!! AUTOMATICALLY GENERATED on {{ timestamp }}
 
-inherit: {{ build_tool }}
+inherit {{ build_tool }}
 
 DESCRIPTION = "{{ description }}"
 SECTION = "devel"
 DEPENDS = "{{ dependencies }}"
-{%if license %}
+{%if has_license %}
 LICENSE = "{{ license }}"
 LIC_FILES_CHKSUM = "file://package.xml;beginline={{ license_line }};endline={{ license_line }};md5={{ license_md5 }}"
 {% endif %}
