@@ -2,4 +2,6 @@
 download_cache.sqlite
 
 meta-ros2/recipes-ros2/ros2
+meta-ros2/recipes-generated
+
 dependencies.gexf
