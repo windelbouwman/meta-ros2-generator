@@ -1,0 +1,3 @@
+
+PROVIDES_append = " yaml "
+

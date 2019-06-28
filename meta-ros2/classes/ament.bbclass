@@ -5,6 +5,8 @@ ROS_BPN ?= "${@d.getVar('BPN', True).replace('-', '_')}"
 
 # S = "${WORKDIR}/git/${ROS_BPN}"
 
+export AMENT_PREFIX_PATH="${STAGING_DIR_HOST}${prefix};${STAGING_DIR_NATIVE}${prefix}"
+
 inherit python3native
 
 do_install_append() {
@@ -26,6 +28,7 @@ FILES_${PN} = " \
     ${datadir}/${ROS_BPN}/resource/* \
     ${datadir}/${ROS_BPN}/msg/* \
     ${datadir}/${ROS_BPN}/srv/* \
+    ${datadir}/${ROS_BPN} \
     ${datadir}/ament_index/* \
     ${libdir}/${PYTHON_DIR}/* \
     ${libdir}/${ROS_BPN}/* \
