@@ -27,8 +27,6 @@ import networkx as nx
 
 
 logger = logging.getLogger("make-meta-ros")
-this_dir = os.path.abspath(os.path.dirname(__file__))
-work_dir = os.path.join(this_dir, "work")
 
 
 def main():
@@ -55,9 +53,9 @@ def main():
 
 
 def process_distro(distro_filename, output_folder):
+    """ Turn a distro description into a folder of bitbake recipes. """
     os.makedirs(output_folder, exist_ok=True)
     ros_packages = list(analyze_distro(distro_filename))
-
     make_dependency_graph(ros_packages)
     create_bitbake_recipes(ros_packages, output_folder)
 
@@ -90,9 +88,6 @@ def analyze_distro(distro_filename):
             yield process_package(
                 distro, repository_name, repository_name, version, url
             )
-
-        # TODO: temp hack:
-        # break
 
 
 def process_package(distro, package_group, package, version, url):
@@ -130,14 +125,10 @@ def process_package(distro, package_group, package, version, url):
     # Extract different xml elements:
     ros_package.description = normalize_description(root.find("description").text)
     license_element = root.find("license")
-    # print(license_element)
     ros_package.license_text = (
         None if license_element is None else validate_license(license_element.text)
     )
-    # print(license_text)
 
-    # buildtool_depend_elements = root.findall('buildtool_depend')
-    # print('build tool depend:', [e.text for e in buildtool_depend_elements])
     # Build tool:
     build_type_element = root.find("export/build_type")
     if build_type_element is None:
@@ -165,7 +156,7 @@ def process_package(distro, package_group, package, version, url):
         deps = [e.text for e in root.findall(dep_tag)]
         dependencies[dep_tag] = deps
 
-    # Special case 'depend' == 'exec_depend', 'build_depend' and 'build_export_depend'
+    # Special case 'depend' expands to 'exec_depend', 'build_depend' and 'build_export_depend'
     deps = [e.text for e in root.findall("depend")]
     dependencies["exec_depend"].extend(deps)
     dependencies["build_depend"].extend(deps)
@@ -206,12 +197,11 @@ class RosPackage:
 
 
 def create_bitbake_recipes(ros_packages, output_folder):
-    package_map = {p.name: p for p in ros_packages}
     for ros_package in ros_packages:
-        create_bitbake_recipe(ros_package, package_map, output_folder)
+        create_bitbake_recipe(ros_package, output_folder)
 
 
-def create_bitbake_recipe(ros_package, package_map, output_folder):
+def create_bitbake_recipe(ros_package, output_folder):
     # Recipe filename is: <package>_<version>.bb
     name = yocto_package_name(ros_package.name)
     base_filename = "{}_{}".format(name, ros_package.version)
@@ -221,27 +211,10 @@ def create_bitbake_recipe(ros_package, package_map, output_folder):
     recipe_filename = os.path.join(group_folder, base_filename + ".bb")
     logger.info("Creating bitbake recipe %s", recipe_filename)
 
-    # To prevent circular dependency when building ament_cmake itself.
-    if ros_package.group == ros_package.build_type:
-        logger.warning(
-            'Package %s build with %s, patching to "ament_inception".',
-            name,
-            ros_package.build_type,
-        )
-        build_tool = "ament_inception"
-    else:
-        build_tool = ros_package.build_type
-
-    # Construct dependencies:
-    deps, build_deps = get_transitive_dependencies(ros_package, package_map)
-
-    normal_deps = list(map(yocto_package_name, deps))
-    native_deps = [yocto_package_name(p) + "-native" for p in build_deps]
-    dependencies = " ".join(normal_deps + native_deps)
+    build_tool = ros_package.build_type
 
     has_license = bool(ros_package.license_line)
     if has_license:
-
         data = {
             "distro": ros_package.distro,
             "package_group": ros_package.group,
@@ -251,7 +224,13 @@ def create_bitbake_recipe(ros_package, package_map, output_folder):
             "timestamp": time.ctime(),
             "build_tool": build_tool,
             "build_type": ros_package.build_type,
-            "dependencies": dependencies,
+            "build_depends": yocto_dependencies(ros_package.dependencies['build_depend']),
+            "build_export_depends": yocto_dependencies(ros_package.dependencies['build_export_depend']),
+            "exec_depends": yocto_dependencies(ros_package.dependencies['exec_depend']),
+            "test_depends": yocto_dependencies(ros_package.dependencies['test_depend']),
+            "doc_depends": yocto_dependencies(ros_package.dependencies['doc_depend']),
+            "buildtool_depends": yocto_tool_dependencies(ros_package.dependencies['buildtool_depend']),
+            "buildtool_export_depends": yocto_tool_dependencies(ros_package.dependencies['buildtool_export_depend']),
             "url": ros_package.url,
             "download_filename": zip_filename,
             "md5sum": ros_package.md5sum,
@@ -262,51 +241,20 @@ def create_bitbake_recipe(ros_package, package_map, output_folder):
             "license_md5": ros_package.license_md5,
         }
         generate_yocto_recipe(recipe_filename, data)
+    else:
+        logger.info('Skipping %s since no license was found .. ', ros_package.name)
 
 
-def traverse(ros_package, path, package_map):
-    yield ros_package
-    deps = ros_package.dependencies[path]
-    for dep in deps:
-        if dep in package_map:
-            sub_package = package_map[dep]
-            yield from traverse(sub_package, path, package_map)
+def yocto_dependencies(deps):
+    deps = list(map(yocto_package_name, deps))
+    deps.sort()
+    return ' '.join(deps)
 
 
-def get_transitive_dependencies(ros_package, package_map):
-    # dep_tags = ['exec_depend', 'build_depend', 'build_export_depend', 'buildtool_depend', 'buildtool_export_depend']
-    deps = []
-    host_deps = []
-    deps.extend(ros_package.dependencies["exec_depend"])  # this we require for sure.
-    deps.extend(
-        ros_package.dependencies["build_depend"]
-    )  # We require this for this package.
-    deps.extend(
-        ros_package.dependencies["build_export_depend"]
-    )  # We require this for depending packages.
-    host_deps.extend(ros_package.dependencies["buildtool_depend"])
-    host_deps.extend(ros_package.dependencies["buildtool_export_depend"])
-
-    for p in traverse(ros_package, "build_depend", package_map):
-        # print(p)
-        # deps.extend(p.dependencies['build_export_depend'])
-        # host_deps.extend(p.dependencies['buildtool_export_depend'])
-        pass
-
-    # for p in traverse(ros_package, 'buildtool_depend', package_map):
-    # d2, _ = get_transitive_dependencies(p, package_map)
-    # host_deps.extend(d2)
-    # print(p)
-
-    # for dep in deps:
-    # print(dep)
-    # if dep in package_map:
-    # child_package = package_map[dep]
-    # get_transitive_dependencies(child_package, package_map)
-
-    # build_dep_tags = ['buildtool_depend', 'buildtool_export_depend']
-    # for build_dep_tag in build_dep_tags:
-    return deps, host_deps
+def yocto_tool_dependencies(deps):
+    deps = [yocto_package_name(p) + "-native" for p in deps]
+    deps.sort()
+    return ' '.join(deps)
 
 
 def yocto_package_name(name):
@@ -376,7 +324,17 @@ recipe_template_text = r"""
 
 DESCRIPTION = "{{ description }}"
 SECTION = "devel"
-DEPENDS = "{{ dependencies }}"
+
+ROS_BUILD_DEPENDS = "{{ build_depends }}"
+ROS_BUILDTOOL_DEPENDS = "{{ buildtool_depends }}"
+ROS_BUILD_EXPORT_DEPENDS = "{{ build_export_depends }}"
+ROS_BUILDTOOL_EXPORT_DEPENDS = "{{ buildtool_export_depends }}"
+ROS_EXEC_DEPENDS = "{{ exec_depends }}"
+ROS_TEST_DEPENDS = "{{ test_depends }}"
+
+DEPENDS = "${ROS_BUILD_DEPENDS} ${ROS_BUILDTOOL_DEPENDS}"
+DEPENDS += "${ROS_BUILD_EXPORT_DEPENDS} ${ROS_BUILDTOOL_EXPORT_DEPENDS}"
+RDEPENDS_${PN} += "${ROS_EXEC_DEPENDS}"
 
 {%if has_license %}
 LICENSE = "{{ license }}"
@@ -389,7 +347,7 @@ SRC_URI[sha256sum] = "{{ sha256sum }}"
 
 S = "${WORKDIR}/{{ package_group }}-release-release-{{ distro }}-{{ package }}-{{ version }}"
 
-inherit {{ build_tool }}
+inherit ros2_{{ build_tool }}
 
 BBCLASSEXTEND += "native"
 
