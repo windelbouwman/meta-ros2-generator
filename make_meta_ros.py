@@ -211,7 +211,11 @@ def create_bitbake_recipe(ros_package, output_folder):
     recipe_filename = os.path.join(group_folder, base_filename + ".bb")
     logger.info("Creating bitbake recipe %s", recipe_filename)
 
-    build_tool = ros_package.build_type
+    # Prevent ament-infinite-inception:
+    if ros_package.group == ros_package.build_type:
+        build_tool = "ament_inception"
+    else:
+        build_tool = ros_package.build_type
 
     has_license = bool(ros_package.license_line)
     if has_license:
@@ -347,7 +351,8 @@ SRC_URI[sha256sum] = "{{ sha256sum }}"
 
 S = "${WORKDIR}/{{ package_group }}-release-release-{{ distro }}-{{ package }}-{{ version }}"
 
-inherit ros2_{{ build_tool }}
+ROS_BUILD_TYPE = "{{ build_tool }}"
+inherit ros2_${ROS_BUILD_TYPE}
 
 BBCLASSEXTEND += "native"
 
