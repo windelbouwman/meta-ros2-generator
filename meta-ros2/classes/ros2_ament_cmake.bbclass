@@ -11,5 +11,6 @@ DEPENDS_append = " ament-cmake-native \
 EXTRA_OECMAKE_append = " -DBUILD_TESTING=OFF"
 
 inherit ament cmake
+inherit ros2_base
 
 

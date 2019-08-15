@@ -72,22 +72,25 @@ def analyze_distro(distro_filename):
             len(repositories),
             repository_name,
         )
-        release = repositories[repository_name]["release"]
-        version = release["version"]
-        url = release["url"]
-        tags = release["tags"]["release"]
-        assert url.endswith(".git")
-        url = "{}/archive/{}.zip".format(url[:-4], tags)
+        try:
+            release = repositories[repository_name]["release"]
+            version = release["version"]
+            url = release["url"]
+            tags = release["tags"]["release"]
+            assert url.endswith(".git")
+            url = "{}/archive/{}.zip".format(url[:-4], tags)
 
-        if "packages" in release:
-            packages = release["packages"]
-            for package in packages:
-                logger.debug("Subpackage %s", package)
-                yield process_package(distro, repository_name, package, version, url)
-        else:
-            yield process_package(
-                distro, repository_name, repository_name, version, url
-            )
+            if "packages" in release:
+                packages = release["packages"]
+                for package in packages:
+                    logger.debug("Subpackage %s", package)
+                    yield process_package(distro, repository_name, package, version, url)
+            else:
+                yield process_package(
+                    distro, repository_name, repository_name, version, url
+                )
+        except Exception:
+            logger.exception('Failed to process %s', repository_name)
 
 
 def process_package(distro, package_group, package, version, url):
@@ -282,16 +285,13 @@ license_map = {
     "Apache License": "Apache-2.0",
     "Version 2.0": "Apache-2.0",
     "BSD License 2.0": "BSD-2-Clause",
-    "BSD": "BSD",
-    "MIT": "MIT",
-    "LGPL": "LGPL",
     "GNU Lesser Public License 2.1": "LGPL-2.1",
 }
 
 
 def warp_license(text):
     """ Some fuzzy mapping according to GNU Lesser Public License 2.1 """
-    return license_map[text]
+    return license_map.get(text, text)
 
 
 def extract_license(f):

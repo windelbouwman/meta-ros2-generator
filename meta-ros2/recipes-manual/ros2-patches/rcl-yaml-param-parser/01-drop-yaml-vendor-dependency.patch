@@ -9,3 +9,11 @@
  
  # Default to C++14
  if(NOT CMAKE_CXX_STANDARD)
+@@ -26,6 +24,7 @@
+   ${PROJECT_NAME}
+   ${rcl_yaml_parser_sources})
+ ament_target_dependencies(${PROJECT_NAME} "yaml" "rcutils" "rcl")
++target_link_libraries(${PROJECT_NAME} yaml)
+ 
+ rcl_set_symbol_visibility_hidden(${PROJECT_NAME} LANGUAGE "C")
+ # Causes the visibility macros to use dllexport rather than dllimport,
