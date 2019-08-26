@@ -1,0 +1,11 @@
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -29,7 +29,7 @@ if(NOT ANDROID)
+       if (Boost_VERSION LESS 106700)
+         set(_Boost_PYTHON3_HEADERS "boost/python.hpp")
+       endif()
+-      find_package(Boost COMPONENTS python3 REQUIRED)
++      # find_package(Boost COMPONENTS python3 REQUIRED)
+     endif()
+   endif()
+ else()
