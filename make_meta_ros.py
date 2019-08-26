@@ -228,7 +228,6 @@ def create_bitbake_recipe(ros_package, output_folder):
             "package": ros_package.name,
             "version": ros_package.version,
             "description": ros_package.description,
-            "timestamp": time.ctime(),
             "build_tool": build_tool,
             "build_type": ros_package.build_type,
             "build_depends": yocto_dependencies(ros_package.dependencies['build_depend']),
@@ -324,7 +323,7 @@ def download_file(url):
 
 
 recipe_template_text = r"""
-# ATTENTION!! AUTOMATICALLY GENERATED on {{ timestamp }}
+# ATTENTION!! AUTOMATICALLY GENERATED
 
 DESCRIPTION = "{{ description }}"
 SECTION = "devel"
