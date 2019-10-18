@@ -1,0 +1,29 @@
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -18,7 +18,6 @@
+ find_package(ament_cmake REQUIRED)
+ find_package(pluginlib REQUIRED)
+ find_package(rcutils REQUIRED)
+-find_package(yaml_cpp_vendor REQUIRED)
+ 
+ add_library(
+   rosbag2_storage
+@@ -30,8 +29,7 @@
+ ament_target_dependencies(
+   rosbag2_storage
+   pluginlib
+-  rcutils
+-  yaml_cpp_vendor)
++  rcutils)
+ 
+ # Causes the visibility macros to use dllexport rather than dllimport,
+ # which is appropriate when building the dll but not consuming it.
+@@ -56,7 +54,7 @@
+ 
+ ament_export_include_directories(include)
+ ament_export_libraries(${PROJECT_NAME})
+-ament_export_dependencies(pluginlib yaml_cpp_vendor)
++ament_export_dependencies(pluginlib)
+ 
+ if(BUILD_TESTING)
+   find_package(ament_lint_auto REQUIRED)

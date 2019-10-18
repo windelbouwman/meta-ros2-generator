@@ -5,7 +5,7 @@
          set(_Boost_PYTHON3_HEADERS "boost/python.hpp")
        endif()
 -      find_package(Boost COMPONENTS python3 REQUIRED)
-+      # find_package(Boost COMPONENTS python3 REQUIRED)
++      find_package(Boost COMPONENTS python37 REQUIRED)
      endif()
    endif()
  else()

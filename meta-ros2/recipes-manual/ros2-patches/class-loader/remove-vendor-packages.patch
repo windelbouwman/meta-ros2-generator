@@ -1,0 +1,22 @@
+--- a/class_loader-extras.cmake
++++ b/class_loader-extras.cmake
+@@ -1,5 +1,4 @@
+ include("${class_loader_DIR}/class_loader_hide_library_symbols.cmake")
+ 
+-find_package(poco_vendor REQUIRED)
+ find_package(Poco REQUIRED COMPONENTS Foundation)
+ list(APPEND class_loader_LIBRARIES ${Poco_LIBRARIES})
+
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -16,9 +16,9 @@
+   find_package(ament_cmake)
+ endif()
+ 
+-find_package(console_bridge_vendor REQUIRED) # Provides console_bridge 0.4.0 on platforms without it.
++# find_package(console_bridge_vendor REQUIRED) # Provides console_bridge 0.4.0 on platforms without it.
+ find_package(console_bridge REQUIRED)
+-find_package(poco_vendor REQUIRED)  # Provides FindPoco.cmake and Poco on platforms without it.
++# find_package(poco_vendor REQUIRED)  # Provides FindPoco.cmake and Poco on platforms without it.
+ find_package(Poco REQUIRED COMPONENTS Foundation)
+ link_directories(${Poco_LIBRARY_DIR})

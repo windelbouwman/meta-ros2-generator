@@ -1,0 +1,29 @@
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -14,10 +14,10 @@
+ find_package(ament_index_cpp REQUIRED)
+ find_package(class_loader REQUIRED)
+ find_package(rcutils REQUIRED)
+-find_package(tinyxml2_vendor REQUIRED)
+-find_package(TinyXML2 REQUIRED)  # provided by tinyxml2 upstream, or tinyxml2_vendor
++# find_package(tinyxml2_vendor REQUIRED)
++find_package(tinyxml2 REQUIRED)  # provided by tinyxml2 upstream, or tinyxml2_vendor
+ 
+-ament_export_dependencies(ament_index_cpp class_loader rcutils tinyxml2_vendor TinyXML2)
++ament_export_dependencies(ament_index_cpp class_loader rcutils tinyxml2)
+ ament_export_include_directories(include)
+ 
+ install(
+
+
+--- a/pluginlib-extras.cmake
++++ b/pluginlib-extras.cmake
+@@ -36,6 +36,6 @@
+   list(APPEND pluginlib_LIBRARIES ${FILESYSTEM_LIB})
+ endif()
+ 
+-find_package(tinyxml2_vendor REQUIRED)
+-find_package(TinyXML2 REQUIRED)
++# find_package(tinyxml2_vendor REQUIRED)
++find_package(tinyxml2 REQUIRED)
+ list(APPEND pluginlib_LIBRARIES ${TinyXML2_LIBRARIES})
