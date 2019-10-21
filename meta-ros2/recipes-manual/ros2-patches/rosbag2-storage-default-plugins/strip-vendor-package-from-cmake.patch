@@ -1,0 +1,22 @@
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -19,8 +19,8 @@
+ find_package(pluginlib REQUIRED)
+ find_package(rcutils REQUIRED)
+ find_package(rosbag2_storage REQUIRED)
+-find_package(sqlite3_vendor REQUIRED)
+-find_package(SQLite3 REQUIRED)  # provided by sqlite3_vendor
++# find_package(sqlite3_vendor REQUIRED)
++# find_package(SQLite3 REQUIRED)  # provided by sqlite3_vendor
+ 
+ add_library(${PROJECT_NAME} SHARED
+   src/rosbag2_storage_default_plugins/sqlite/sqlite_wrapper.cpp
+@@ -38,6 +38,8 @@
+   $<INSTALL_INTERFACE:include>
+ )
+ 
++target_link_libraries(${PROJECT_NAME} sqlite3)
++
+ # Causes the visibility macros to use dllexport rather than dllimport,
+ # which is appropriate when building the dll but not consuming it.
+ target_compile_definitions(${PROJECT_NAME} PRIVATE
